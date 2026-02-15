@@ -1,0 +1,37 @@
+{
+	// Use IntelliSense para saber los atributos posibles.
+	// Mantenga el puntero para ver las descripciones de los existentes atributos.
+	// Para más información, visite: https://go.microsoft.com/fwlink/?linkid=830387
+	"version": "0.2.0",
+	"configurations": [
+		{
+    "name": "Python: API (Uvicorn)",
+    "type": "debugpy",
+    "request": "launch",
+    "module": "uvicorn",
+    "args": [
+        "api:app",
+        "--host", "0.0.0.0",
+        "--port", "8000",
+        "--reload",
+        "--app-dir", "src"
+    ],
+    "console": "integratedTerminal"
+	},
+		{
+			"name": "Depurador de Python: Archivo actual con argumentos",
+			"type": "debugpy",
+			"request": "launch",
+			"program": "${file}",
+			"console": "integratedTerminal",
+			"args": "ingest --image D:\\Internal\\py-comparison-vectorized-photos\\assets\\1150226.jpg"
+		},
+		{
+			"name": "Depurador de Python: Archivo actual",
+			"type": "debugpy",
+			"request": "launch",
+			"program": "${file}",
+			"console": "integratedTerminal"
+		}
+	]
+}
