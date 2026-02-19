@@ -51,14 +51,14 @@ fraud-face/
 ## 2. Flujo de Datos y Pipeline
 ### A. Ingesta Síncrona (`src/pipeline/ingest_sync.py`)
 1.  Recibir imagen (bytes) + metadatos (original_filename, user_ref).
-2.  **Detectar:** Obtener BBox y Landmarks con AWS Rekognition (solo detección).
-3.  **Procesar:** Recortar rostro -> Normalizar (`IMG_SIZE`) -> Recortar región central (ojos/nariz/boca/orejas) basada en landmarks.
-4.  **Vectorizar (Local):** Generar embedding del recorte central usando un modelo local (ej. FaceNet/Cnn).
-5.  **Buscar (Mongo Vector Search):** Ejecutar búsqueda vectorial KNN en `faces_daily` usando el embedding generado.
+2.  **Detectar:** Obtener BBox y Landmarks con AWS Rekognition.
+3.  **Procesar:** Recortar rostro -> Normalizar a 160x160 (para FaceNet).
+4.  **Vectorizar (PyTorch):** Generar embedding (512 dims) usando `facenet-pytorch`.
+5.  **Buscar (Mongo Vector Search):** Ejecutar búsqueda vectorial KNN en `faces_daily`.
     *   *Regla:* Si la distancia es menor a `THRESH_DAILY` (similitud alta), marcar `suspicious=True`.
     *   *Regla:* Retornar `original_filename` de los vecinos más cercanos.
 6.  **Persistir:** Guardar metadatos y embedding en colección diaria.
-    *   Guardar: `image_id`, `original_filename`, `embedding` (array), `bbox`, `landmarks`, `level="daily"`, `created_at`.
+    *   Guardar: `image_id`, `original_filename`, `embedding` (512 floats), `bbox`, `landmarks`, `level="daily"`, `created_at`.
 
 ### B. Enriquecimiento Asíncrono y Clustering (`src/pipeline/enrich_async.py`, `hdbscan_cluster.py`)
 1.  Para rostros nuevos en `faces_daily`, calcular embeddings locales (si el backend local está activo).
@@ -147,12 +147,42 @@ class VectorBackend(Protocol):
         ...
 
 # src/vectorization/local_embeddings.py
-# Ejemplo con modelo local (ej. onnx, pytorch o similar)
+# Implementación con DeepFace (Facenet512)
+import io
+import numpy as np
+from PIL import Image
+from typing import List
 from .backend import VectorBackend
+
+# Importación diferida o condicional
+try:
+    from deepface import DeepFace
+except ImportError:
+    DeepFace = None
+
 class LocalEmbeddingBackend(VectorBackend):
     def embed_region(self, region_bytes: bytes) -> List[float]:
-        # Implementar lógica de inferencia local
-        return [0.1, 0.2] # Dummy
+        if DeepFace is None:
+             raise ImportError("deepface library required")
+        
+        # Convertir bytes a imagen PIL RGB
+        img = Image.open(io.BytesIO(region_bytes)).convert("RGB")
+        img_np = np.array(img) # Deepface consume numpy array (RGB/BGR)
+
+        # Generar embedding con Facenet512 (512 dims)
+        # enforce_detection=False porque ya detectamos con AWS
+        embedding_objs = DeepFace.represent(
+            img_path=img_np, 
+            model_name="Facenet512",
+            enforce_detection=False,
+            align=False
+        )
+        if not embedding_objs:
+            return []
+            
+        vector = embedding_objs[0]["embedding"]
+        return vector # Lista de 512 floats
+
 
 # src/storage/mongo.py
 from pymongo import MongoClient, ASCENDING, IndexModel

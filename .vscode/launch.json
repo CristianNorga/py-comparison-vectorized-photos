@@ -5,19 +5,42 @@
 	"version": "0.2.0",
 	"configurations": [
 		{
-    "name": "Python: API (Uvicorn)",
-    "type": "debugpy",
-    "request": "launch",
-    "module": "uvicorn",
-    "args": [
-        "api:app",
-        "--host", "0.0.0.0",
-        "--port", "8000",
-        "--reload",
-        "--app-dir", "src"
-    ],
-    "console": "integratedTerminal"
-	},
+			"name": "Python 3.11: API (Uvicorn)",
+			"type": "debugpy",
+			"request": "launch",
+			"module": "uvicorn",
+			"cwd": "${workspaceFolder}", // Asegura que el directorio de trabajo sea la raíz
+			"env": {
+				"PYTHONPATH": "${workspaceFolder}/src" // Asegura que encuentre tus módulos
+			},
+			"args": [
+				"api:app",
+				"--host",
+				"0.0.0.0",
+				"--port",
+				"8000",
+				"--reload"
+				// Quité --app-dir src porque añadimos PYTHONPATH
+			],
+			"console": "integratedTerminal"
+		},
+		{
+			"name": "Python: API (Uvicorn)",
+			"type": "debugpy",
+			"request": "launch",
+			"module": "uvicorn",
+			"args": [
+				"api:app",
+				"--host",
+				"0.0.0.0",
+				"--port",
+				"8000",
+				"--reload",
+				"--app-dir",
+				"src"
+			],
+			"console": "integratedTerminal"
+		},
 		{
 			"name": "Depurador de Python: Archivo actual con argumentos",
 			"type": "debugpy",

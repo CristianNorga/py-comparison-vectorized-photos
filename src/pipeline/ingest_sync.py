@@ -13,8 +13,7 @@ from preprocessing.regions import crop_central_region
 from storage.mongo import MongoStorage, get_db
 from storage.schemas import build_face_doc
 from utils.images import pil_to_jpeg_bytes, pil_to_png_base64
-from vectorization.local_embeddings import LocalEmbeddingBackend
-
+from vectorization.local_embeddings import LocalEmbeddingBackendFaceNet
 
 async def ingest_sync(
     image_bytes: bytes,
@@ -28,7 +27,6 @@ async def ingest_sync(
     active_storage = storage or MongoStorage(get_db(app_settings), app_settings)
 
     rekognition_client = get_rekognition_client(app_settings)
-    # backend = AwsRekognitionBackend(rekognition_client) OLD
 
     bbox, landmarks = detect_face_and_bbox(image_bytes, rekognition_client)
     face_img = normalize(crop_bbox(image_bytes, bbox), size=app_settings.img_size)
@@ -39,10 +37,10 @@ async def ingest_sync(
     # Convertir a bytes para el backend local
     with io.BytesIO() as buffer:
         central_face.save(buffer, format="JPEG")
-        region_bytes = buffer.getvalue()
+        face_bytes = buffer.getvalue()
 
     # NUEVO: Vectorización Local
-    embedding = LocalEmbeddingBackend().embed_region(region_bytes)
+    embedding = LocalEmbeddingBackendFaceNet().embed_region(face_bytes)
 
     # NUEVO: Búsqueda Vectorial en Mongo
     # Nota: vector_search retorna documentos con score, ya no FaceId de rekognition
@@ -77,27 +75,3 @@ async def ingest_sync(
         doc_id=image_id,
         matches=matches,
     )
-    enriched_matches.append(
-        MatchDTO(
-            face_id=match.face_id,
-            similarity=match.similarity,
-            original_filename=original_lookup.get(match.face_id),
-        )
-    )
-
-    image_id = str(uuid.uuid4())
-    document = build_face_doc(
-        image_id=image_id,
-        original_filename=original_filename,
-        face_id=face_id,
-        bbox=bbox,
-        landmarks=landmarks,
-        level="daily",
-        user_ref=user_ref,
-        face_thumbnail_b64=pil_to_png_base64(central_face),
-    ).model_dump(mode="python")
-
-    document["ingested_at"] = datetime.now(UTC)
-    active_storage.insert_face("daily", document)
-
-    return IngestResultDTO(suspicious=suspicious, matches=enriched_matches[:5], doc_id=image_id)

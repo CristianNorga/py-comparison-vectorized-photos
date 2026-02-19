@@ -69,11 +69,36 @@ class MongoStorage:
         ]
         # Nota: Si no existe el índice, esto fallará o no retornará nada en una instancia local sin Atlas Search.
         # Para desarrollo local sin Atlas, podríamos simular o simplemente retornar vacío.
+
         try:
+           # Intento de búsqueda vectorial (Atlas)
            return list(self.db["faces_daily"].aggregate(pipeline))
         except Exception:
-           # Fallback silencioso para entorno local sin capability de vector search
-           return []
+           # Fallback: Búsqueda lineal en memoria (solo para dev/poc)
+           # No recomendado para producción con muchos datos
+           import numpy as np
+           candidates = list(self.db["faces_daily"].find({"embedding": {"$exists": True}}))
+           if not candidates:
+               return []
+           
+           query_vec = np.array(embedding)
+           query_norm = np.linalg.norm(query_vec)
+           
+           scores = []
+           for doc in candidates:
+               cand_vec = np.array(doc["embedding"])
+               cand_norm = np.linalg.norm(cand_vec)
+               if query_norm > 0 and cand_norm > 0:
+                   # Cosine Similarity
+                   sim = np.dot(query_vec, cand_vec) / (query_norm * cand_norm)
+                   if sim > 0.4: # Filtro mínimo
+                       doc["score"] = float(sim)
+                       scores.append(doc)
+            
+           # Ordenar y cortar
+           scores.sort(key=lambda x: x["score"], reverse=True)
+           return scores[:top_k]
+
 
 
         cursor = self.db[f"faces_{level}"].find(

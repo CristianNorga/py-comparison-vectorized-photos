@@ -14,13 +14,15 @@ dependencies = [
   "pymongo>=4.10.0",
   "pydantic>=2.10.0",
   "pydantic-settings>=2.7.0",
-  "numpy>=2.0.0",
-  "pillow>=11.0.0",
-  "hdbscan>=0.8.40",
-  "structlog>=25.0.0",
+  "numpy>=1.24.0,<2.0.0",
+  "pillow>=10.2.0",
+  "hdbscan>=0.8.33",
+  "structlog>=24.0.0",
   "fastapi>=0.109.0",
   "uvicorn[standard]>=0.27.0",
   "python-multipart>=0.0.7",
+  "torch>=2.0.0",
+  "facenet-pytorch>=2.5.2",
 ]
 
 [project.optional-dependencies]

@@ -6,7 +6,7 @@ from clustering.hdbscan_cluster import cluster_embeddings, compute_cluster_centr
 from config import Settings, get_settings
 from storage.mongo import MongoStorage, get_db
 from utils.images import base64_to_pil
-from vectorization.local_embeddings import LocalEmbeddingBackend
+from vectorization.local_embeddings_facenet import LocalEmbeddingBackend
 
 
 def enrich_daily_faces(
